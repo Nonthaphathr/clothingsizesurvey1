@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>สำรวจไซซ์เสื้อ คณะสร้างสรรค์สุนทรีย์</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --primary:#E84393; --primary-light:#FF6BB5;
+  --secondary:#7C3AED; --bg:#FFF5FB; --card:#fff;
+  --text:#1E1B2E; --text2:#6B5F7A; --border:#E5D6F0;
+  --success:#10B981; --error:#EF4444;
+  --radius:16px; --shadow:0 4px 20px rgba(232,67,147,.10);
+  --font:'Sarabun',sans-serif;
+}
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; padding-bottom:120px; }
+
+/* Header */
+.app-header {
+  background:linear-gradient(135deg,#E84393 0%,#7C3AED 100%);
+  color:white; padding:20px 16px 16px; text-align:center; position:relative;
+}
+.app-header h1 { font-size:20px; font-weight:800; line-height:1.45; }
+.app-header p  { font-size:14px; opacity:.85; margin-top:4px; }
+.settings-btn {
+  position:absolute; top:16px; right:16px;
+  background:rgba(255,255,255,.2); border:none; border-radius:50%;
+  width:44px; height:44px; font-size:22px; cursor:pointer; color:white;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Tabs */
+.tab-bar {
+  display:flex; background:white; border-bottom:2px solid var(--border);
+  position:sticky; top:0; z-index:100;
+}
+.tab-btn {
+  flex:1; padding:14px 8px; border:none; background:transparent;
+  font-family:var(--font); font-size:15px; font-weight:700;
+  color:var(--text2); cursor:pointer; position:relative;
+}
+.tab-btn.active { color:var(--primary); }
+.tab-btn.active::after {
+  content:""; position:absolute; bottom:-2px; left:0; right:0;
+  height:3px; background:var(--primary); border-radius:2px 2px 0 0;
+}
+.tab-page { display:none; padding:16px; }
+.tab-page.active { display:block; }
+
+/* Floating Chart Button */
+.fab-wrap {
+  position:fixed; bottom:28px; right:16px; z-index:400;
+  display:none; flex-direction:column; align-items:center;
+}
+.fab-btn {
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:white; border:none; border-radius:50px;
+  padding:13px 20px 13px 16px; font-family:var(--font);
+  font-size:15px; font-weight:800; cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+  box-shadow:0 6px 24px rgba(232,67,147,.50);
+  animation:fabPulse 2s ease-in-out infinite;
+  white-space:nowrap;
+}
+.fab-btn .ficon { font-size:20px; }
+@keyframes fabPulse {
+  0%,100%{ transform:translateY(0); box-shadow:0 6px 24px rgba(232,67,147,.50); }
+  50%    { transform:translateY(-6px); box-shadow:0 14px 34px rgba(232,67,147,.65); }
+}
+.fab-btn:active { transform:scale(.96) !important; animation:none; }
+
+/* Card */
+.card { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); margin-bottom:16px; }
+.card-title { font-size:18px; font-weight:800; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+
+/* Form */
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.input-field {
+  width:100%; padding:13px 16px; border:2px solid var(--border); border-radius:12px;
+  font-family:var(--font); font-size:16px; color:var(--text);
+  background:white; transition:border-color .2s; appearance:none;
+}
+.input-field:focus { outline:none; border-color:var(--primary); }
+
+/* Autocomplete */
+#nameGroup { position:relative; }
+#nameDropdown {
+  display:none; position:absolute; top:calc(100% + 4px); left:0; right:0;
+  background:white; border:2px solid var(--primary); border-radius:12px;
+  overflow:hidden; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,.12);
+}
+.suggest-item { padding:14px 16px; font-size:16px; cursor:pointer; }
+.suggest-item:hover { background:var(--bg); }
+
+/* Shirt entry row */
+.shirt-entry-row {
+  background:linear-gradient(135deg,#FFF0F8,#F3E8FF);
+  border:2px solid var(--border); border-radius:var(--radius);
+  padding:16px; margin-bottom:14px;
+}
+.row-header-bar {
+  display:flex; align-items:center; gap:10px;
+  padding-bottom:12px; border-bottom:1.5px solid var(--border); margin-bottom:14px;
+}
+.shirt-type-icon { font-size:22px; }
+.shirt-type-label { font-size:18px; font-weight:800; color:var(--secondary); }
+
+/* Qty stepper */
+.qty-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.qty-row > label { font-size:15px; font-weight:700; }
+.qty-controls { display:flex; align-items:center; gap:10px; }
+.qty-btn {
+  width:42px; height:42px; border-radius:50%;
+  border:2px solid var(--primary); background:white;
+  font-size:24px; font-weight:800; color:var(--primary); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+}
+.qty-btn:active { background:var(--primary); color:white; }
+.qty-display { font-size:24px; font-weight:800; color:var(--primary); min-width:28px; text-align:center; }
+.qty-unit { font-size:15px; color:var(--text2); }
+
+/* Per-item size selects */
+.size-selects-area { display:flex; flex-direction:column; gap:10px; }
+.size-select-row { display:flex; align-items:center; gap:10px; }
+.size-item-label { font-size:14px; font-weight:700; color:var(--secondary); white-space:nowrap; min-width:52px; }
+
+/* Submit */
+.submit-btn {
+  width:100%; padding:18px; margin-bottom:30px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:white; border:none; border-radius:var(--radius);
+  font-family:var(--font); font-size:20px; font-weight:800;
+  cursor:pointer; box-shadow:0 6px 20px rgba(232,67,147,.4);
+  transition:transform .15s;
+}
+.submit-btn:active { transform:scale(.98); }
+.submit-btn:disabled { opacity:.6; }
+
+/* Stats */
+.stats-hero {
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  border-radius:var(--radius); padding:20px; color:white; text-align:center; margin-bottom:16px;
+}
+.stats-hero .big-num { font-size:52px; font-weight:800; line-height:1; }
+.stats-hero .big-label { font-size:16px; opacity:.9; margin-top:4px; }
+
+.chart-card { background:white; border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); margin-bottom:14px; }
+.chart-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.chart-type-name { font-size:17px; font-weight:800; color:var(--secondary); }
+.chart-total-badge { background:#F3E8FF; color:var(--secondary); border-radius:20px; padding:4px 12px; font-size:13px; font-weight:700; }
+
+.size-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.size-pill {
+  display:flex; align-items:center; gap:5px;
+  background:color-mix(in srgb, var(--pill-color) 12%, white);
+  border:1.5px solid color-mix(in srgb, var(--pill-color) 30%, white);
+  border-radius:20px; padding:5px 10px;
+}
+.pill-size { font-size:13px; font-weight:800; color:var(--pill-color); }
+.pill-count { font-size:13px; color:var(--text2); }
+
+.section-sub-title { font-size:17px; font-weight:800; color:var(--secondary); margin:20px 0 12px; }
+.response-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+.response-name { font-size:16px; font-weight:800; color:var(--text); margin-bottom:8px; }
+.response-entry { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:6px; }
+.entry-type { background:var(--secondary); color:white; border-radius:8px; padding:4px 10px; font-size:13px; font-weight:700; }
+.entry-qty { color:var(--text2); font-size:13px; }
+.entry-sizes { display:flex; flex-wrap:wrap; gap:4px; }
+.size-tag { background:#FDE8F5; color:var(--primary); border-radius:6px; padding:3px 8px; font-size:13px; font-weight:700; }
+.response-time { font-size:12px; color:var(--text2); margin-top:6px; text-align:right; }
+
+.export-btn {
+  width:100%; padding:16px; background:var(--success); color:white;
+  border:none; border-radius:var(--radius); font-family:var(--font);
+  font-size:17px; font-weight:700; cursor:pointer; margin-bottom:16px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  box-shadow:0 4px 14px rgba(16,185,129,.3);
+}
+
+/* Settings modal */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(30,27,46,.55); z-index:500;
+  align-items:flex-end; justify-content:center;
+}
+.modal-overlay.open { display:flex; animation:fadeIn .2s; }
+@keyframes fadeIn { from{opacity:0} }
+.modal-sheet {
+  background:white; border-radius:24px 24px 0 0;
+  padding:24px 20px 28px; width:100%; max-height:90vh; overflow-y:auto;
+  animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideUp { from{transform:translateY(100%)} }
+.modal-handle { width:40px; height:5px; background:var(--border); border-radius:3px; margin:0 auto 20px; }
+.modal-title { font-size:20px; font-weight:800; color:var(--primary); margin-bottom:20px; text-align:center; }
+
+.setting-section { background:var(--bg); border-radius:14px; padding:16px; margin-bottom:14px; }
+.setting-section h3 { font-size:16px; font-weight:700; color:var(--secondary); margin-bottom:12px; }
+
+.pool-item {
+  display:flex; align-items:center; justify-content:space-between;
+  background:white; border:1.5px solid var(--border); border-radius:10px;
+  padding:10px 14px; margin-bottom:8px;
+}
+.pool-label { font-size:15px; color:var(--text); flex:1; }
+.pool-label-hidden { color:var(--text2); text-decoration:line-through; }
+.pool-actions { display:flex; align-items:center; gap:8px; }
+.btn-icon {
+  background:#FEE2E2; color:var(--error); border:none;
+  border-radius:8px; width:32px; height:32px; cursor:pointer;
+  font-size:15px; display:flex; align-items:center; justify-content:center;
+}
+.btn-toggle {
+  border:none; border-radius:8px; padding:6px 10px;
+  font-family:var(--font); font-size:13px; font-weight:700; cursor:pointer;
+}
+.btn-hide { background:#FEF3C7; color:#92400E; }
+.btn-show { background:#D1FAE5; color:#065F46; }
+
+.add-input-row { display:flex; gap:8px; margin-top:10px; }
+.add-input-row input { flex:1; }
+.btn-add {
+  padding:12px 16px; background:var(--primary); color:white;
+  border:none; border-radius:10px; font-family:var(--font);
+  font-size:15px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+
+.save-settings-btn {
+  width:100%; padding:18px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:white; border:none; border-radius:var(--radius);
+  font-family:var(--font); font-size:18px; font-weight:800;
+  cursor:pointer; box-shadow:0 6px 20px rgba(232,67,147,.35);
+  margin-top:8px; margin-bottom:10px;
+}
+.save-settings-btn:disabled { opacity:.6; }
+.close-settings-btn {
+  width:100%; padding:14px; background:var(--bg); border:none;
+  border-radius:12px; font-family:var(--font); font-size:16px;
+  cursor:pointer; color:var(--text2); font-weight:600;
+}
+.clear-data-btn {
+  width:100%; padding:15px; background:white;
+  border:2px solid var(--error); border-radius:var(--radius);
+  font-family:var(--font); font-size:16px; font-weight:700;
+  color:var(--error); cursor:pointer; margin-bottom:10px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  transition:background .15s;
+}
+.clear-data-btn:hover { background:#FEF2F2; }
+.clear-data-btn:active { background:#FEE2E2; }
+/* Confirm dialog */
+.confirm-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(30,27,46,.65); z-index:700;
+  align-items:center; justify-content:center; padding:24px;
+}
+.confirm-overlay.open { display:flex; animation:fadeIn .18s; }
+.confirm-box {
+  background:white; border-radius:var(--radius); padding:28px 24px;
+  width:100%; max-width:340px; text-align:center;
+}
+.confirm-icon { font-size:48px; margin-bottom:12px; }
+.confirm-title { font-size:18px; font-weight:800; color:var(--text); margin-bottom:8px; }
+.confirm-desc  { font-size:15px; color:var(--text2); line-height:1.6; margin-bottom:24px; }
+.confirm-actions { display:flex; gap:10px; }
+.confirm-cancel {
+  flex:1; padding:14px; background:var(--bg); border:none;
+  border-radius:12px; font-family:var(--font); font-size:16px;
+  font-weight:700; cursor:pointer; color:var(--text2);
+}
+.confirm-ok {
+  flex:1; padding:14px; background:var(--error); border:none;
+  border-radius:12px; font-family:var(--font); font-size:16px;
+  font-weight:800; cursor:pointer; color:white;
+}
+
+/* Size chart modal */
+.sizechart-modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(30,27,46,.7); z-index:600;
+  align-items:center; justify-content:center; padding:20px;
+}
+.sizechart-modal.open { display:flex; animation:fadeIn .2s; }
+.sizechart-inner {
+  background:white; border-radius:var(--radius);
+  padding:20px; width:100%; max-width:500px; max-height:88vh;
+  overflow-y:auto; position:relative;
+}
+.sizechart-inner img { width:100%; border-radius:10px; margin-top:10px; }
+.sizechart-close {
+  position:absolute; top:12px; right:12px; width:36px; height:36px;
+  border:none; background:var(--bg); border-radius:50%;
+  font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+
+/* Toast */
+.toast {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%) translateY(90px);
+  background:var(--text); color:white; padding:14px 24px;
+  border-radius:50px; font-family:var(--font); font-size:15px; font-weight:700;
+  z-index:900; transition:transform .3s cubic-bezier(.34,1.56,.64,1); white-space:nowrap;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.success { background:var(--success); }
+.toast.error   { background:var(--error); }
+.empty-state { text-align:center; padding:40px; color:var(--text2); font-size:16px; line-height:1.7; }
+select option { font-family:var(--font); font-size:16px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <h1>👕 สำรวจไซซ์เสื้อ<br>คณะสร้างสรรค์สุนทรีย์</h1>
+  <p>กรุณากรอกข้อมูลให้ครบถ้วน</p>
+  <button class="settings-btn" onclick="openSettingsPanel()">⚙️</button>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('survey',this)">📝 กรอกข้อมูล</button>
+  <button class="tab-btn" onclick="switchTab('stats',this)">📊 สรุปสถิติ</button>
+</div>
+
+<!-- Floating Size Chart Button -->
+<div class="fab-wrap" id="fabWrap">
+  <button class="fab-btn" onclick="openSizeChart()">
+    <span class="ficon">📐</span>ดูตารางไซซ์
+  </button>
+</div>
+
+<!-- TAB 1 -->
+<div id="tab-survey" class="tab-page active">
+  <div class="card">
+    <div class="card-title">👤 ข้อมูลผู้ตอบ</div>
+    <div class="form-group" id="nameGroup">
+      <label>ชื่อ-สกุล <span style="color:var(--error)">*</span></label>
+      <input type="text" id="nameInput" class="input-field" placeholder="กรอกชื่อ-สกุล" autocomplete="off">
+      <div id="nameDropdown"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">👕 รายการเสื้อ</div>
+    <div id="shirtEntriesContainer"></div>
+  </div>
+  <button class="submit-btn" id="submitBtn" onclick="submitResponse()">✓ บันทึกข้อมูล</button>
+</div>
+
+<!-- TAB 2 -->
+<div id="tab-stats" class="tab-page">
+  <div class="stats-hero">
+    <div class="big-num" id="totalCount">0</div>
+    <div class="big-label">จำนวนผู้ตอบแบบสำรวจ (คน)</div>
+  </div>
+  <button class="export-btn" onclick="exportExcel()">📥 ส่งออกเป็น Excel</button>
+  <div id="statsContainer"><div class="empty-state">กำลังโหลดข้อมูล...</div></div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="outsideClose(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ ตั้งค่าระบบ</div>
+
+    <div class="setting-section">
+      <h3>👕 รายการเสื้อ (เพิ่ม / ซ่อน / ลบ)</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:10px">กด "ซ่อน" เพื่อไม่แสดงในฟอร์ม โดยไม่ต้องลบออก</p>
+      <div id="shirtTypesList"></div>
+      <div class="add-input-row">
+        <input type="text" id="newShirtTypeInput" class="input-field" placeholder="ชื่อรายการเสื้อใหม่">
+        <button class="btn-add" onclick="addShirtTypePending()">+ เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="setting-section">
+      <h3>📏 ไซซ์เสื้อ (เพิ่ม / เรียงลำดับ / ลบ)</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:10px">ไซซ์จะปรากฏใน dropdown ตามลำดับที่ตั้งค่า</p>
+      <div id="sizesList"></div>
+      <div class="add-input-row">
+        <input type="text" id="newSizeInput" class="input-field" placeholder="เช่น XS, 6XL, Free Size">
+        <button class="btn-add" onclick="addSizePending()">+ เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="setting-section">
+      <h3>📋 คลังชื่อ-สกุล (Suggest)</h3>
+      <div id="namePoolList"></div>
+      <div class="add-input-row">
+        <input type="text" id="newNameInput" class="input-field" placeholder="ชื่อ-สกุล">
+        <button class="btn-add" onclick="addNamePending()">+ เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="setting-section">
+      <h3>📐 ลิงก์รูปภาพตารางไซซ์เสื้อ</h3>
+      <input type="url" id="sizeChartUrlInput" class="input-field"
+        placeholder="https://..." style="margin-bottom:8px" oninput="previewChart()">
+      <div id="sizeChartPreview"></div>
+    </div>
+
+    <button class="save-settings-btn" id="saveSettingsBtn" onclick="saveAllSettings()">
+      💾 บันทึกการตั้งค่า
+    </button>
+
+    <div class="setting-section" style="border:2px solid #FEE2E2;background:#FFF5F5;">
+      <h3 style="color:var(--error)">🗑️ ล้างข้อมูลการสำรวจ</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+        ลบข้อมูลคำตอบทั้งหมดออกจากระบบ<br>ไม่สามารถกู้คืนได้ กรุณาส่งออก Excel ก่อน
+      </p>
+      <button class="clear-data-btn" onclick="confirmClear()">
+        🗑️ ล้างข้อมูลที่สำรวจทั้งหมด
+      </button>
+    </div>
+
+    <button class="close-settings-btn" onclick="closeSettings()">✕ ยกเลิก / ปิด</button>
+  </div>
+</div>
+
+<!-- Confirm Clear Modal -->
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title">ยืนยันการล้างข้อมูล?</div>
+    <div class="confirm-desc">ข้อมูลคำตอบทั้งหมดจะถูกลบถาวร<br>ไม่สามารถกู้คืนได้</div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">ยกเลิก</button>
+      <button class="confirm-ok" id="confirmOkBtn" onclick="clearAllData()">ลบข้อมูล</button>
+    </div>
+  </div>
+</div>
+
+<!-- Size Chart Modal -->
+<div class="sizechart-modal" id="sizeChartModal" onclick="closeSizeChart()">
+  <div class="sizechart-inner" onclick="event.stopPropagation()">
+    <button class="sizechart-close" onclick="closeSizeChart()">✕</button>
+    <div class="modal-title">📐 ตารางไซซ์เสื้อ</div>
+    <div id="sizeChartImgContainer"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, onSnapshot, query, orderBy, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:"AIzaSyC8lI99jZ2WlRWcsAsi_J_nrf7jU1QUFkc",
+  authDomain:"surveyshirtsrangsansuntree.firebaseapp.com",
+  projectId:"surveyshirtsrangsansuntree",
+  storageBucket:"surveyshirtsrangsansuntree.firebasestorage.app",
+  messagingSenderId:"723989309659",
+  appId:"1:723989309659:web:b7f4d2a7ef792ac36284fe"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── State ──────────────────────────────────────────────────────────
+let allResponses = [];
+let shirtTypes   = []; // [{name,hidden}]
+let namePool     = [];
+let sizeChartUrl = "";
+let charts       = {};
+
+// Pending edits (only committed on save)
+let pShirtTypes  = [];
+let pNamePool    = [];
+let pSizes       = [];
+
+let SIZES = ["XS","S","M","L","XL","2XL","3XL","4XL","5XL"];
+const COLORS = ["#E84393","#7C3AED","#F59E0B","#10B981","#3B82F6","#EF4444","#8B5CF6","#14B8A6","#F97316"];
+
+// ── Firestore helpers ──────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const snap = await getDocs(collection(db,"settings"));
+    snap.forEach(d => {
+      if(d.id==="shirtTypes")   shirtTypes   = (d.data().list||[]).map(t=>typeof t==="string"?{name:t,hidden:false}:t);
+      if(d.id==="namePool")     namePool     = d.data().list||[];
+      if(d.id==="sizeChartUrl") sizeChartUrl = d.data().url||"";
+      if(d.id==="sizes")        SIZES        = d.data().list||SIZES;
+    });
+    if(!shirtTypes.length){
+      shirtTypes=[{name:"เสื้อโปโล",hidden:false},{name:"เสื้อกีฬา",hidden:false}];
+      await saveST();
+    }
+  } catch(e){console.error(e);}
+  renderSurveyRows();
+  updateFab();
+}
+const saveST  = () => setDoc(doc(db,"settings","shirtTypes"),  {list:shirtTypes});
+const saveNP  = () => setDoc(doc(db,"settings","namePool"),    {list:namePool});
+const saveSCU = () => setDoc(doc(db,"settings","sizeChartUrl"),{url:sizeChartUrl});
+const saveSZ  = () => setDoc(doc(db,"settings","sizes"),       {list:SIZES});
+
+// ── Realtime ───────────────────────────────────────────────────────
+function listenResponses() {
+  const q = query(collection(db,"responses"),orderBy("timestamp","desc"));
+  onSnapshot(q,snap=>{
+    allResponses=[];
+    snap.forEach(d=>allResponses.push({id:d.id,...d.data()}));
+    renderStats();
+  });
+}
+
+// ── Survey form ────────────────────────────────────────────────────
+function renderSurveyRows() {
+  const c = document.getElementById("shirtEntriesContainer");
+  c.innerHTML = "";
+  const visible = shirtTypes.filter(t=>!t.hidden);
+  if(!visible.length){
+    c.innerHTML=`<div class="empty-state">ยังไม่มีรายการเสื้อ<br>กรุณาเพิ่มในเมนูตั้งค่า ⚙️</div>`; return;
+  }
+  visible.forEach(t=>{
+    const div = document.createElement("div");
+    div.className="shirt-entry-row"; div.dataset.qty=1;
+    div.innerHTML=`
+      <div class="row-header-bar">
+        <span class="shirt-type-icon">👕</span>
+        <span class="shirt-type-label">${t.name}</span>
+      </div>
+      <div class="qty-row">
+        <label>จำนวนที่รับ</label>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="window._chgQty(this,-1)">−</button>
+          <span class="qty-display">1</span>
+          <button class="qty-btn" onclick="window._chgQty(this,1)">+</button>
+          <span class="qty-unit">ตัว</span>
+        </div>
+      </div>
+      <div class="size-selects-area"></div>`;
+    c.appendChild(div);
+    buildSelects(div,1);
+  });
+}
+
+function buildSelects(row,qty){
+  const area=row.querySelector(".size-selects-area"); area.innerHTML="";
+  for(let i=1;i<=qty;i++){
+    const w=document.createElement("div"); w.className="size-select-row";
+    w.innerHTML=`<span class="size-item-label">ตัวที่ ${i}</span>
+      <select class="size-select input-field">
+        <option value="">-- เลือกไซซ์ --</option>
+        ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
+      </select>`;
+    area.appendChild(w);
+  }
+}
+
+window._chgQty = (btn,delta)=>{
+  const row=btn.closest(".shirt-entry-row");
+  let q=Math.min(10,Math.max(1,parseInt(row.dataset.qty)+delta));
+  row.dataset.qty=q; row.querySelector(".qty-display").textContent=q;
+  buildSelects(row,q);
+};
+
+// ── Submit ─────────────────────────────────────────────────────────
+async function submitResponse(){
+  const name=document.getElementById("nameInput").value.trim();
+  if(!name){showToast("กรุณากรอกชื่อ-สกุล","error");return;}
+  const entries=[]; let valid=true;
+  document.querySelectorAll(".shirt-entry-row").forEach(row=>{
+    const type=row.querySelector(".shirt-type-label").textContent;
+    const qty=parseInt(row.dataset.qty)||0;
+    const sizes=[...row.querySelectorAll(".size-select")].map(s=>s.value);
+    if(sizes.some(s=>!s)){valid=false;return;}
+    entries.push({type,qty,sizes});
+  });
+  if(!valid||!entries.length){showToast("กรุณาเลือกไซซ์ให้ครบทุกตัว","error");return;}
+  const btn=document.getElementById("submitBtn");
+  btn.disabled=true; btn.textContent="กำลังบันทึก...";
+  try{
+    await addDoc(collection(db,"responses"),{name,entries,timestamp:new Date().toISOString()});
+    showToast("บันทึกสำเร็จ ✓","success");
+    document.getElementById("nameInput").value="";
+    renderSurveyRows();
+  }catch(e){showToast("ข้อผิดพลาด: "+e.message,"error");}
+  btn.disabled=false; btn.textContent="✓ บันทึกข้อมูล";
+}
+window.submitResponse=submitResponse;
+
+// ── Stats ──────────────────────────────────────────────────────────
+function renderStats(){
+  document.getElementById("totalCount").textContent=allResponses.length;
+  const c=document.getElementById("statsContainer");
+  if(!allResponses.length){c.innerHTML=`<div class="empty-state">ยังไม่มีข้อมูล</div>`;return;}
+  const sum={};
+  allResponses.forEach(r=>(r.entries||[]).forEach(e=>{
+    if(!sum[e.type])sum[e.type]={};
+    (e.sizes||[]).forEach(s=>{sum[e.type][s]=(sum[e.type][s]||0)+1;});
+  }));
+  const chartsHtml=Object.keys(sum).map(type=>{
+    const labels=SIZES.filter(s=>sum[type][s]);
+    const total=labels.reduce((a,s)=>a+sum[type][s],0);
+    return `<div class="chart-card">
+      <div class="chart-card-header">
+        <span class="chart-type-name">${type}</span>
+        <span class="chart-total-badge">รวม ${total} คน</span>
+      </div>
+      <canvas id="c_${type.replace(/[^a-z0-9]/gi,'_')}" height="150"></canvas>
+      <div class="size-pills">
+        ${labels.map((s,i)=>`<div class="size-pill" style="--pill-color:${COLORS[i%COLORS.length]}">
+          <span class="pill-size">${s}</span><span class="pill-count">${sum[type][s]} คน</span>
+        </div>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+
+  const listHtml=allResponses.map(r=>`
+    <div class="response-card">
+      <div class="response-name">👤 ${r.name}</div>
+      ${(r.entries||[]).map(e=>`<div class="response-entry">
+        <span class="entry-type">${e.type}</span>
+        <span class="entry-qty">${e.qty} ตัว</span>
+        <div class="entry-sizes">${(e.sizes||[]).map(s=>`<span class="size-tag">${s}</span>`).join("")}</div>
+      </div>`).join("")}
+      <div class="response-time">${new Date(r.timestamp).toLocaleString("th-TH")}</div>
+    </div>`).join("");
+
+  c.innerHTML=`<div>${chartsHtml}</div>
+    <div class="section-sub-title">รายชื่อผู้ตอบ (${allResponses.length} คน)</div>
+    <div>${listHtml}</div>`;
+
+  // Draw charts
+  Object.keys(sum).forEach(type=>{
+    const id=`c_${type.replace(/[^a-z0-9]/gi,'_')}`;
+    const ctx=document.getElementById(id); if(!ctx)return;
+    const labels=SIZES.filter(s=>sum[type][s]);
+    if(charts[id])charts[id].destroy();
+    charts[id]=new Chart(ctx,{
+      type:"bar",
+      data:{labels,datasets:[{
+        data:labels.map(s=>sum[type][s]),
+        backgroundColor:COLORS.slice(0,labels.length),
+        borderRadius:8, borderSkipped:false
+      }]},
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} คน`}}},
+        scales:{
+          x:{ticks:{font:{family:"Sarabun",size:12}}},
+          y:{beginAtZero:true,ticks:{stepSize:1,font:{family:"Sarabun",size:11}}}
+        }
+      }
+    });
+  });
+}
+
+// ── Settings panel ─────────────────────────────────────────────────
+function openSettingsPanel(){
+  pShirtTypes=[...shirtTypes.map(t=>({...t}))];
+  pNamePool=[...namePool];
+  pSizes=[...SIZES];
+  document.getElementById("sizeChartUrlInput").value=sizeChartUrl;
+  renderSTList(); renderNPList(); renderSZList(); previewChart();
+  document.getElementById("settingsModal").classList.add("open");
+}
+window.openSettingsPanel=openSettingsPanel;
+
+function renderSZList(){
+  document.getElementById("sizesList").innerHTML=pSizes.map((s,i)=>`
+    <div class="pool-item">
+      <span class="pool-label">${s}</span>
+      <div class="pool-actions">
+        <button class="btn-icon" onclick="window._moveSZ(${i},-1)" ${i===0?"disabled":""} style="background:#EDE9FE;color:var(--secondary)">↑</button>
+        <button class="btn-icon" onclick="window._moveSZ(${i},1)"  ${i===pSizes.length-1?"disabled":""} style="background:#EDE9FE;color:var(--secondary)">↓</button>
+        <button class="btn-icon" onclick="window._delSZ(${i})">✕</button>
+      </div>
+    </div>`).join("");
+}
+window._delSZ=(i)=>{pSizes.splice(i,1); renderSZList();};
+window._moveSZ=(i,dir)=>{
+  const j=i+dir;
+  if(j<0||j>=pSizes.length) return;
+  [pSizes[i],pSizes[j]]=[pSizes[j],pSizes[i]]; renderSZList();
+};
+window.addSizePending=()=>{
+  const inp=document.getElementById("newSizeInput");
+  const v=inp.value.trim().toUpperCase(); if(!v)return;
+  if(pSizes.includes(v)){showToast("มีไซซ์นี้แล้ว","error");return;}
+  pSizes.push(v); renderSZList(); inp.value="";
+};
+
+function renderSTList(){
+  document.getElementById("shirtTypesList").innerHTML=pShirtTypes.map((t,i)=>`
+    <div class="pool-item">
+      <span class="pool-label ${t.hidden?'pool-label-hidden':''}">${t.name}</span>
+      <div class="pool-actions">
+        <button class="btn-toggle ${t.hidden?'btn-show':'btn-hide'}" onclick="window._togST(${i})">
+          ${t.hidden?"👁 แสดง":"🙈 ซ่อน"}
+        </button>
+        <button class="btn-icon" onclick="window._delST(${i})">✕</button>
+      </div>
+    </div>`).join("");
+}
+function renderNPList(){
+  document.getElementById("namePoolList").innerHTML=pNamePool.map((n,i)=>`
+    <div class="pool-item">
+      <span class="pool-label">${n}</span>
+      <button class="btn-icon" onclick="window._delNP(${i})">✕</button>
+    </div>`).join("");
+}
+
+window._togST=(i)=>{pShirtTypes[i].hidden=!pShirtTypes[i].hidden; renderSTList();};
+window._delST=(i)=>{pShirtTypes.splice(i,1); renderSTList();};
+window._delNP=(i)=>{pNamePool.splice(i,1); renderNPList();};
+window.addShirtTypePending=()=>{
+  const inp=document.getElementById("newShirtTypeInput");
+  const v=inp.value.trim(); if(!v)return;
+  pShirtTypes.push({name:v,hidden:false}); renderSTList(); inp.value="";
+};
+window.addNamePending=()=>{
+  const inp=document.getElementById("newNameInput");
+  const v=inp.value.trim(); if(!v)return;
+  if(!pNamePool.includes(v)) pNamePool.push(v); renderNPList(); inp.value="";
+};
+
+// ── Save all settings ──────────────────────────────────────────────
+async function saveAllSettings(){
+  const btn=document.getElementById("saveSettingsBtn");
+  btn.disabled=true; btn.textContent="กำลังบันทึก...";
+  try{
+    shirtTypes=[...pShirtTypes.map(t=>({...t}))];
+    namePool=[...pNamePool];
+    SIZES=[...pSizes];
+    sizeChartUrl=document.getElementById("sizeChartUrlInput").value.trim();
+    await saveST(); await saveNP(); await saveSCU(); await saveSZ();
+    showToast("บันทึกการตั้งค่าสำเร็จ ✓","success");
+    renderSurveyRows(); updateFab();
+    document.getElementById("settingsModal").classList.remove("open");
+  }catch(e){showToast("เกิดข้อผิดพลาด: "+e.message,"error");}
+  btn.disabled=false; btn.textContent="💾 บันทึกการตั้งค่า";
+}
+window.saveAllSettings=saveAllSettings;
+
+// ── Export Excel ───────────────────────────────────────────────────
+function exportExcel(){
+  if(!allResponses.length){showToast("ไม่มีข้อมูล","error");return;}
+  const rows=[["ชื่อ-สกุล","ชนิดเสื้อ","จำนวน","ไซซ์","วันเวลา"]];
+  allResponses.forEach(r=>(r.entries||[]).forEach(e=>{
+    rows.push([r.name,e.type,e.qty,(e.sizes||[]).join(", "),new Date(r.timestamp).toLocaleString("th-TH")]);
+  }));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"ข้อมูลเสื้อ");
+  XLSX.writeFile(wb,"สำรวจไซซ์เสื้อ.xlsx");
+}
+window.exportExcel=exportExcel;
+
+// ── Floating btn ───────────────────────────────────────────────────
+function updateFab(){
+  document.getElementById("fabWrap").style.display=sizeChartUrl?"flex":"none";
+}
+
+// ── Autocomplete ───────────────────────────────────────────────────
+function setupAC(){
+  const input=document.getElementById("nameInput");
+  const dd=document.getElementById("nameDropdown");
+  input.addEventListener("input",()=>{
+    const v=input.value.trim();
+    if(!v||!namePool.length){dd.style.display="none";return;}
+    const m=namePool.filter(n=>n.includes(v));
+    if(!m.length){dd.style.display="none";return;}
+    dd.innerHTML=m.map(n=>`<div class="suggest-item" onclick="window._selName('${n}')">${n}</div>`).join("");
+    dd.style.display="block";
+  });
+  document.addEventListener("click",e=>{if(!e.target.closest("#nameGroup"))dd.style.display="none";});
+}
+window._selName=n=>{
+  document.getElementById("nameInput").value=n;
+  document.getElementById("nameDropdown").style.display="none";
+};
+
+// ── Toast ──────────────────────────────────────────────────────────
+function showToast(msg,type="success"){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.className=`toast show ${type}`;
+  setTimeout(()=>t.className="toast",2800);
+}
+window.showToast=showToast;
+
+// ── Size chart modal ───────────────────────────────────────────────
+window.openSizeChart=()=>{
+  if(!sizeChartUrl)return;
+  document.getElementById("sizeChartImgContainer").innerHTML=`<img src="${sizeChartUrl}" alt="ตารางไซซ์">`;
+  document.getElementById("sizeChartModal").classList.add("open");
+};
+
+// ── Clear all responses ────────────────────────────────────────────
+async function clearAllData(){
+  const btn=document.getElementById("confirmOkBtn");
+  btn.disabled=true; btn.textContent="กำลังลบ...";
+  try{
+    const snap=await getDocs(collection(db,"responses"));
+    const dels=snap.docs.map(d=>deleteDoc(doc(db,"responses",d.id)));
+    await Promise.all(dels);
+    showToast("ล้างข้อมูลเรียบร้อยแล้ว","success");
+    document.getElementById("confirmModal").classList.remove("open");
+    document.getElementById("settingsModal").classList.remove("open");
+  }catch(e){showToast("เกิดข้อผิดพลาด: "+e.message,"error");}
+  btn.disabled=false; btn.textContent="ลบข้อมูล";
+}
+window.clearAllData=clearAllData;
+
+// ── Init ───────────────────────────────────────────────────────────
+window.addEventListener("load",()=>{
+  loadSettings().then(()=>{listenResponses(); setupAC();});
+});
+</script>
+
+<script>
+function confirmClear(){ document.getElementById("confirmModal").classList.add("open"); }
+function closeConfirm(){ document.getElementById("confirmModal").classList.remove("open"); }
+function switchTab(name,btn){
+  document.querySelectorAll(".tab-page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  btn.classList.add("active");
+  // fab only on survey tab
+  const fab=document.getElementById("fabWrap");
+  if(name!=="survey") fab.style.display="none";
+  else if(document.getElementById("sizeChartUrlInput").value.trim())
+    fab.style.display="flex";
+}
+function closeSettings(){ document.getElementById("settingsModal").classList.remove("open"); }
+function outsideClose(e){ if(e.target===document.getElementById("settingsModal")) closeSettings(); }
+function closeSizeChart(){ document.getElementById("sizeChartModal").classList.remove("open"); }
+function previewChart(){
+  const url=document.getElementById("sizeChartUrlInput").value.trim();
+  document.getElementById("sizeChartPreview").innerHTML=
+    url?`<img src="${url}" style="max-width:100%;border-radius:10px;margin-top:8px">`:"";
+}
+</script>
+</body>
+</html>
